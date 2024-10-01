@@ -1,5 +1,5 @@
 from rest_framework import generics
-from rest_framework.permission import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from .models import Category, MenuItem, Cart, Order, OrderItem
 from .serializers import CategorySerializer, MenuItemSerializer, CartSerializer, OrderSerializer
 from rest_framework.response import Response
@@ -74,7 +74,9 @@ class OrderView(generics.ListCreateAPIView):
             return Order.objects.all().filter(delivery_crew=self.request.user)
         else:
             return Order.objects.all()
-        
+        #else :
+        #   return Order.onjects.all()
+
 def create(self, request, *args, **kwargs):
     menuitem_count = Cart.objects.all().filter(user=self.request.user).count()
     if menuitem_count == 0:
@@ -107,7 +109,7 @@ def create(self, request, *args, **kwargs):
     
 def get_total_price(self, user):
     total = 0
-    items = Cart.objectts.all().filter(user=user).all()
+    items = Cart.objects.all().filter(user=user).all()
     for item in items.values():
         total += item['price']
     return total
@@ -116,3 +118,54 @@ class SingleOrderView(generics.RetrieveUpdateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        if self.request.user.groups.count()==0: 
+            return Response('Not Ok')
+        else : 
+            return super().update(request, *args, **kwargs)
+        
+class GroupViewSet(viewsets.ViewSet):
+    permission_classes = [IsAdminUser]
+    def list(self, request):
+        users = User.objects.all().filter(groups__name='Manager')
+        items = UserSeriliazer(users, many=True)
+        return Response(items.data)
+    
+    def create(self, request):
+        user = get_object_or_404(User, username=request.data['username'])
+        managers = Group.objects.get(name = "Manager")
+        managers.user_set.add(user)
+        return Response({"message" : "user added to the manager group"}, 200)
+    
+    def destroy(self, request):
+        user = get_objects_or_404(User, username= request.data['username'])
+        managers = Group.objects.get(name="Manager")
+        managers.user_set.remove(user)
+        return Response({"message" : "user removed from the manager group"}, 200)
+    
+class DeliveryCrewViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    def list(self, request):
+        users = User.objects.all().filter(groups__name='Delivery Crew')
+        items = UserSerializer(users, many=True)
+        return Response(items.data)
+    
+    def create(self, request):
+        if self.request.user.is_superuser == False:
+            if self.request.user.groups.filter(name= 'Manager').exists() == False:
+                return Response({"message" : "forbidden"}, status.HTTP_FORBIDDEN)
+            
+            user = get_object_or_404(User, username=request.data['username'])
+            dc = Group.objects.get(name="Delivey Crew")
+            dc.user_set.add(user)
+            return Response({"message" : "user added to the delivery creq group"}, 200)
+        
+    def destroy(self,request):
+        if self.requset.user.is_superuser == False:
+            if self.request.user.groups.filter(name = 'Manager').exists() == False:
+                return Response({"message": "forbidden"}, status.HTTP_403_FORBIDDEN)
+            user = get_object_or_404(User, username=request.data['username'])
+            dc = Group.objects.get(name="Delivery Crew")
+            dc.user_set.remove(user)
+            return Response({"message": "user removed from the delivery creq group"}, 200)

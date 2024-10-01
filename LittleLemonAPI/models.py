@@ -30,11 +30,11 @@ class Order(models.Model):
     total = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     date = models.DateField(db_index=True)
 
-class OrderItem(models.Models):
+class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order')
     menuitem = models.ForeignKey(MenuItem, on_delete=models.CASCADE)
     quantity = models.SmallIntegerField()
     price = models.DecimalField(max_digits=6, decimal_places=2)
     
     class Meta:
-        unique_together = ('oder', 'menuitem')
+        unique_together = ('order', 'menuitem')
